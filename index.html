@@ -3,88 +3,77 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="설비변환기">
-    <title>설비 지능형 변환기 v16</title>
+    <title>설비 업체 인식 변환기 v24</title>
     <style>
         :root { --sb: #007042; --gs: #00b0f0; --se: #f58220; --def: #2c3e50; }
         body { font-family: 'Malgun Gothic', sans-serif; max-width: 900px; margin: 0 auto; padding: 15px; background-color: #f4f7f9; }
         .card { background: white; padding: 15px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 20px; border-top: 5px solid var(--def); }
-        
-        .btn-detect { width: 100%; padding: 12px; background: #3498db; color: white; border: none; border-radius: 8px; margin-top: 8px; font-weight: bold; cursor: pointer; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
-        .form-group { background: #fdfdfd; padding: 12px; border-radius: 10px; border: 1px solid #eee; }
         label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 13px; color: #444; }
-        input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; box-sizing: border-box; }
-        
-        .time-row { display: flex; align-items: center; gap: 3px; background: #f1f1f1; padding: 8px; border-radius: 8px; margin-bottom: 5px; font-size: 12px; }
-        .time-row input { width: 42px; text-align: center; border: 1px solid #bbb; padding: 4px; font-size: 13px; }
-        .time-row .year-input { width: 65px; }
-
-        .worker-btn { background: #fff; padding: 12px 0; border-radius: 8px; font-size: 13px; cursor: pointer; border: 1px solid #ddd; flex: 1 1 30%; text-align: center; font-weight: bold; }
+        input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; box-sizing: border-box; margin-bottom: 10px; }
+        .btn-detect { width: 100%; padding: 12px; background: #2c3e50; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-bottom: 15px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .form-group { background: #fdfdfd; padding: 12px; border-radius: 10px; border: 1px solid #eee; }
+        .worker-group { display: flex; flex-wrap: wrap; gap: 6px; }
+        .worker-btn { background: #fff; padding: 10px 0; border-radius: 8px; font-size: 12px; cursor: pointer; border: 1px solid #ddd; flex: 1 1 23%; text-align: center; font-weight: bold; }
         .worker-btn.active { background: #34495e !important; color: white !important; }
-        
-        .note-item { background: #f8f9fa; padding: 8px 12px; border-radius: 5px; font-size: 12px; cursor: pointer; border: 1px solid #eee; margin-bottom: 5px; display: inline-block; margin-right: 5px; }
-        
-        .btn-main { width: 100%; padding: 18px; background: var(--def); color: white; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; margin: 15px 0; }
-        #outputOrder { height: 320px; background: #2c3e50; color: #ecf0f1; font-family: 'Consolas', monospace; font-size: 13px; border-radius: 8px; padding: 15px; overflow-y: auto; white-space: pre-wrap; line-height: 1.5; }
+        .btn-main { width: 100%; padding: 18px; background: #27ae60; color: white; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; margin: 15px 0; }
+        #outputOrder { height: 350px; background: #2c3e50; color: #ecf0f1; font-family: 'Consolas', monospace; font-size: 13px; border-radius: 8px; padding: 15px; overflow-y: auto; white-space: pre-wrap; line-height: 1.5; }
+        .time-row { display: flex; align-items: center; gap: 3px; background: #f1f1f1; padding: 8px; border-radius: 8px; font-size: 12px; margin-bottom: 5px; }
+        .time-row input { width: 42px; text-align: center; border: 1px solid #bbb; padding: 4px; }
     </style>
 </head>
 <body>
 
 <div class="card" id="mainCard">
-    <h2 style="margin:0 0 10px 0; font-size:18px;">🚚 설비 변환기 v16 <span id="typeBadge" style="background:#95a5a6; padding:2px 8px; border-radius:10px; font-size:11px; color:white;">대기</span></h2>
+    <h2 style="margin:0 0 10px 0; font-size:17px;">🚚 업체 인식형 실이력 변환기 v24 <span id="typeBadge" style="background:#95a5a6; padding:2px 8px; border-radius:10px; font-size:11px; color:white;">미인식</span></h2>
     
     <label>1. 오더 내용 붙여넣기</label>
-    <textarea id="inputOrder" style="height:80px;" placeholder="카톡 오더 내용 붙여넣기"></textarea>
-    <button type="button" class="btn-detect" onclick="analyzeData()">데이터 분석 및 인식 시작</button>
+    <textarea id="inputOrder" style="height:100px;" placeholder="카톡 오더 내용을 붙여넣으세요..."></textarea>
+    
+    <button type="button" class="btn-detect" onclick="analyzeData()">업체 인식</button>
 
     <div class="grid">
         <div class="form-group">
-            <label>3. 조치내용</label>
+            <label>3. 조치내용 (업체 인식 결과)</label>
             <select id="actionSelect" onchange="syncField('actionSelect', 'customAction')"></select>
-            <input id="customAction" style="margin-top:5px;" placeholder="직접 입력">
+            <input id="customAction" placeholder="조치내역">
         </div>
         <div class="form-group">
-            <label>4. 금액/자재</label>
+            <label>4. 금액/자재 (업체 인식 결과)</label>
             <select id="priceSelect" onchange="syncField('priceSelect', 'customPrice')"></select>
-            <textarea id="customPrice" style="height:50px; margin-top:5px;" placeholder="상세 내용"></textarea>
+            <textarea id="customPrice" style="height:60px;" placeholder="비용 내역"></textarea>
         </div>
     </div>
 
     <div class="form-group" style="margin-top:10px;">
-        <label>5. 작업 시간 (10분 단위 자동 세팅)</label>
+        <label>5. 작업 시간</label>
         <div class="time-row">
             <strong>시작:</strong>
-            <input type="text" id="sYear" class="year-input">. <input type="text" id="sMonth">. <input type="text" id="sDay">
+            <input type="text" id="sYear" style="width:60px;">. <input type="text" id="sMonth">. <input type="text" id="sDay">
             <input type="text" id="sHour">시 <input type="text" id="sMin">분
         </div>
         <div class="time-row">
             <strong>종료:</strong>
-            <input type="text" id="eYear" class="year-input">. <input type="text" id="eMonth">. <input type="text" id="eDay">
+            <input type="text" id="eYear" style="width:60px;">. <input type="text" id="eMonth">. <input type="text" id="eDay">
             <input type="text" id="eHour">시 <input type="text" id="eMin">분
         </div>
     </div>
 
     <div class="form-group">
-        <label>8. 작업자 (중복 선택)</label>
-        <div style="display:flex; flex-wrap:wrap; gap:6px;">
+        <label>8. 작업자 선택</label>
+        <div class="worker-group">
             <div class="worker-btn" onclick="toggleW(this, '박경남')">박경남</div>
             <div class="worker-btn" onclick="toggleW(this, '김태훈')">김태훈</div>
             <div class="worker-btn" onclick="toggleW(this, '유환희')">유환희</div>
             <div class="worker-btn" onclick="toggleW(this, '김현민')">김현민</div>
             <div class="worker-btn" onclick="toggleW(this, '김형우')">김형우</div>
+            <div class="worker-btn" onclick="toggleW(this, '손정훈')">손정훈</div>
         </div>
     </div>
 
     <div class="form-group" style="margin-top:10px;">
-        <label>6. 특이사항 (클릭 시 자동 입력)</label>
-        <div id="quickNotes">
-            <div class="note-item" onclick="addNote('작업 후 정상 배수 확인 후 퇴점하였습니다.')">✅ 정상배수</div>
-            <div class="note-item" onclick="addNote('추후 지속적 문제시 고압세척 안내 후 퇴점하였습니다.')">⚠️ 고압세척안내</div>
-            <div class="note-item" onclick="addNote('노후 파손으로 인한 새 부속 교체 완료하였습니다.')">🛠️ 부속교체</div>
-        </div>
-        <textarea id="customNote" style="height:60px; margin-top:8px;" placeholder="특이사항 직접 입력"></textarea>
+        <label>6. 특이사항</label>
+        <textarea id="customNote" style="height:70px;"></textarea>
     </div>
 
     <button type="button" class="btn-main" onclick="generateReport()">⚡ 완료 양식 생성</button>
@@ -93,15 +82,59 @@
 </div>
 
 <script>
-let currentType = "NORMAL";
+let currentBrand = "NORMAL";
 let selectedWorkers = [];
+
+const brandHistoryDB = {
+    "STARBUCKS": {
+        actions: [
+            "백룸 제빙기 배수관 통수작업",
+            "바 아이스빈 주름관 고정 및 통수작업",
+            "싱크대 수전 교체작업 및 고압호스 연결작업",
+            "천정 누수 점검 및 배관 보수작업"
+        ],
+        prices: ["통수공 2인 / 2인작업 협의완료\n내시경촬영 협의완료", "자재비 별도 / 인건비 협의", "빌지작성"],
+        notes: "- 제빙기 배수관 역류현상 확인 후 통수 완료\n- 작업 후 정상배수 확인 후 퇴점하였습니다."
+    },
+    "GS": {
+        actions: [
+            "내부배관 및 외부배관 통수작업",
+            "음식물처리기 이물질 제거 및 통수작업",
+            "스프레이건 고압호스 교체작업",
+            "단니플 및 배관 부속 교체"
+        ],
+        prices: ["내부배관 150,000원 / 외부배관 250,000원", "고압호스 4ea 32,000원\n단니플 3ea 9,000원\n인건비 협의", "빌지작성"],
+        notes: "- 약 15m 진입시 통수되었습니다.\n- 추후 지속적 문제시 고압세척 안내 후 퇴점하였습니다."
+    },
+    "SEVEN": {
+        actions: [
+            "양변기 부속 set 교체작업",
+            "양변기 볼탑 및 피스톤 교체",
+            "세면대 폽업 및 트랩 교체작업",
+            "양변기 막힘 통수작업"
+        ],
+        prices: ["양변기 부속 set 20,000원 / 인건비 65,000원", "인건비 65,000원 / 빌지작성"],
+        notes: "- 노후 파손으로 인한 새 부속 교체 완료하였습니다.\n- 작업 후 정상 작동 확인 후 퇴점하였습니다."
+    },
+    "NORMAL": {
+        actions: ["현장 점검 및 조치 완료", "파손 부속 교체작업"],
+        prices: ["인건비 및 자재비 협의", "빌지작성"],
+        notes: "- 작업 완료 후 정상 작동 확인"
+    }
+};
+
+const brandConfigs = {
+    STARBUCKS: { label: "스타벅스", color: "#007042", f1: "장소/경유", f4: "금액(청구인원)/투입자재" },
+    GS: { label: "GS25", color: "#00b0f0", f1: "점포명", f4: "비용/자재" },
+    SEVEN: { label: "세븐일레븐", color: "#f58220", f1: "점포명", f4: "비용/자재" },
+    NORMAL: { label: "기타", color: "#95a5a6", f1: "점포명", f4: "금액/자재" }
+};
 
 function initTime() {
     const now = new Date();
     const roundedMin = Math.floor(now.getMinutes() / 10) * 10;
     const end = new Date(now); end.setMinutes(roundedMin);
     const start = new Date(end); start.setHours(start.getHours() - 1);
-
     const setT = (pre, d) => {
         document.getElementById(pre+'Year').value = d.getFullYear();
         document.getElementById(pre+'Month').value = String(d.getMonth()+1).padStart(2,'0');
@@ -112,50 +145,38 @@ function initTime() {
     setT('s', start); setT('e', end);
 }
 
-window.onload = function() { initTime(); renderOptions(); };
+window.onload = () => { initTime(); };
 
 function toggleW(el, name) {
     el.classList.toggle('active');
-    if(el.classList.contains('active')) { if(!selectedWorkers.includes(name)) selectedWorkers.push(name); }
-    else { selectedWorkers = selectedWorkers.filter(w => w !== name); }
+    if(el.classList.contains('active')) selectedWorkers.push(name);
+    else selectedWorkers = selectedWorkers.filter(w => w !== name);
 }
-
-function addNote(text) {
-    const area = document.getElementById('customNote');
-    area.value += (area.value ? '\n- ' : '- ') + text;
-}
-
-const baseData = {
-    STARBUCKS: { actions: ["백룸 제빙기 배수관 통수작업", "바 아이스빈 주름관 고정 및 통수작업"], prices: ["통수공 2인 / 2인작업 협의완료"], color: "#007042" },
-    GS: { actions: ["스프레이건 고압호스 교체작업", "내부/외부 배관 통수작업"], prices: ["빌지작성"], color: "#00b0f0" },
-    SEVEN: { actions: ["양변기 부속 set 교체작업", "천정 누수 점검 및 통수"], prices: ["인건비 65,000원 / 자재비 20,000원 / 총 85,000원"], color: "#f58220" },
-    NORMAL: { actions: ["배수관 통수작업", "부속 교체작업"], prices: ["협의"], color: "#95a5a6" }
-};
 
 function analyzeData() {
     const input = document.getElementById('inputOrder').value.toLowerCase();
-    if(input.includes("스타")) currentType = "STARBUCKS";
-    else if(input.includes("gs") || input.includes("지에스")) currentType = "GS";
-    else if(input.includes("세븐")) currentType = "SEVEN";
-    else currentType = "NORMAL";
+    if(input.includes("스타")) currentBrand = "STARBUCKS";
+    else if(input.includes("gs") || input.includes("지에스")) currentBrand = "GS";
+    else if(input.includes("세븐")) currentBrand = "SEVEN";
+    else currentBrand = "NORMAL";
 
-    document.getElementById('typeBadge').innerText = currentType;
-    document.getElementById('typeBadge').style.background = baseData[currentType].color;
-    document.getElementById('mainCard').style.borderTopColor = baseData[currentType].color;
-    renderOptions();
-}
+    const config = brandConfigs[currentBrand];
+    document.getElementById('typeBadge').innerText = config.label;
+    document.getElementById('typeBadge').style.background = config.color;
+    document.getElementById('mainCard').style.borderTopColor = config.color;
 
-function renderOptions() {
-    const learnedActions = JSON.parse(localStorage.getItem('learned_actions_' + currentType) || "[]");
-    const learnedPrices = JSON.parse(localStorage.getItem('learned_prices_' + currentType) || "[]");
-    const updateS = (id, list) => {
+    const data = brandHistoryDB[currentBrand];
+    const updateS = (id, list, target) => {
         const el = document.getElementById(id);
-        el.innerHTML = '<option value="">-- 옵션 선택 --</option>';
-        list.forEach(i => { const opt = document.createElement('option'); opt.value = i; opt.innerText = i.substring(0,25); el.appendChild(opt); });
-        el.innerHTML += '<option value="direct">✏️ 직접입력</option>';
+        el.innerHTML = `<option value="">-- 업체 인식 결과 --</option>`;
+        list.forEach(i => { const opt = document.createElement('option'); opt.value = i; opt.innerText = i.split('\n')[0].substring(0, 30); el.appendChild(opt); });
+        el.innerHTML += '<option value="direct">✏️ 직접 입력</option>';
+        document.getElementById(target).value = list[0] || ""; el.selectedIndex = 1;
     };
-    updateS('actionSelect', [...new Set([...learnedActions, ...baseData[currentType].actions])]);
-    updateS('priceSelect', [...new Set([...learnedPrices, ...baseData[currentType].prices])]);
+
+    updateS('actionSelect', data.actions, 'customAction');
+    updateS('priceSelect', data.prices, 'customPrice');
+    document.getElementById('customNote').value = data.notes;
 }
 
 function syncField(sid, iid) {
@@ -164,31 +185,21 @@ function syncField(sid, iid) {
 }
 
 function generateReport() {
+    const input = document.getElementById('inputOrder').value;
+    const config = brandConfigs[currentBrand];
     const sT = `${document.getElementById('sYear').value}년 ${document.getElementById('sMonth').value}월 ${document.getElementById('sDay').value}일 ${document.getElementById('sHour').value}시 ${document.getElementById('sMin').value}분`;
     const eT = `${document.getElementById('eYear').value}년 ${document.getElementById('eMonth').value}월 ${document.getElementById('eDay').value}일 ${document.getElementById('eHour').value}시 ${document.getElementById('eMin').value}분`;
-    
-    const input = document.getElementById('inputOrder').value;
     const locM = input.match(/(?:점포명(?:,경유)?\s*:\s*)(.*)/);
     const symM = input.match(/(?:증상\s*:\s*)(.*)/);
-    
-    const action = document.getElementById('customAction').value;
-    const price = document.getElementById('customPrice').value;
-    const note = document.getElementById('customNote').value;
-
-    const label1 = (currentType === "GS" || currentType === "SEVEN") ? "점포명" : "장소/경유";
-    const label4 = (currentType === "GS" || currentType === "SEVEN") ? "비용/자재" : "금액(청구인원)/투입자재";
-
-    const res = `1. ${label1} : ${locM?locM[1].split('\n')[0].trim():'확인필요'}\n\n2. 접수내용 : ${symM?symM[1].split('\n')[0].trim():'확인필요'}\n\n3. 조치내용 : ${action}\n\n4. ${label4} :\n${price}\n\n5. 작업시간 : ${sT}부터 ${eT}까지\n\n6. 특이사항 :\n${note}\n\n7. 작업이력 :\n\n8. 작업자 : ${selectedWorkers.join(' ')}`;
-    
+    const res = `1. ${config.f1} : ${locM?locM[1].split('\n')[0].trim():'현장확인'}\n\n2. 접수내용 : ${symM?symM[1].split('\n')[0].trim():'내용확인'}\n\n3. 조치내용 : ${document.getElementById('customAction').value}\n\n4. ${config.f4} :\n${document.getElementById('customPrice').value}\n\n5. 작업시간 : ${sT}부터 ${eT}까지\n\n6. 특이사항 :\n${document.getElementById('customNote').value}\n\n7. 작업이력 :\n\n8. 작업자 : ${selectedWorkers.join(' ')}`;
     document.getElementById('outputOrder').innerText = res;
 }
 
 function copyResult() {
     const val = document.getElementById('outputOrder').innerText;
-    const t = document.createElement("textarea");
-    document.body.appendChild(t); t.value = val; t.select();
+    const t = document.createElement("textarea"); document.body.appendChild(t); t.value = val; t.select();
     document.execCommand('copy'); document.body.removeChild(t);
-    alert('복사 완료!');
+    alert('보고서 복사 완료!');
 }
 </script>
 </body>
