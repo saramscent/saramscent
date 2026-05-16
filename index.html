@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>설비 업체 인식 변환기 v24</title>
+    <title>설비 업체 인식 변환기 v25</title>
     <style>
-        :root { --sb: #007042; --gs: #00b0f0; --se: #f58220; --def: #2c3e50; }
+        :root { --sb: #007042; --gs: #00b0f0; --se: #f58220; --bk: #da291c; --def: #2c3e50; }
         body { font-family: 'Malgun Gothic', sans-serif; max-width: 900px; margin: 0 auto; padding: 15px; background-color: #f4f7f9; }
         .card { background: white; padding: 15px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 20px; border-top: 5px solid var(--def); }
         label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 13px; color: #444; }
@@ -25,7 +25,7 @@
 <body>
 
 <div class="card" id="mainCard">
-    <h2 style="margin:0 0 10px 0; font-size:17px;">🚚 업체 인식형 실이력 변환기 v24 <span id="typeBadge" style="background:#95a5a6; padding:2px 8px; border-radius:10px; font-size:11px; color:white;">미인식</span></h2>
+    <h2 style="margin:0 0 10px 0; font-size:17px;">🚚 업체 인식형 실이력 변환기 v25 <span id="typeBadge" style="background:#95a5a6; padding:2px 8px; border-radius:10px; font-size:11px; color:white;">미인식</span></h2>
     
     <label>1. 오더 내용 붙여넣기</label>
     <textarea id="inputOrder" style="height:100px;" placeholder="카톡 오더 내용을 붙여넣으세요..."></textarea>
@@ -41,7 +41,7 @@
         <div class="form-group">
             <label>4. 금액/자재 (업체 인식 결과)</label>
             <select id="priceSelect" onchange="syncField('priceSelect', 'customPrice')"></select>
-            <textarea id="customPrice" style="height:60px;" placeholder="비용 내역"></textarea>
+            <textarea id="customPrice" style="height:60px;" placeholder="비비용 내역"></textarea>
         </div>
     </div>
 
@@ -86,33 +86,23 @@ let currentBrand = "NORMAL";
 let selectedWorkers = [];
 
 const brandHistoryDB = {
+    "BURGERKING": {
+        actions: ["바닥배관 통수작업", "바닥배관 전체통수"],
+        prices: ["150,000원", "300,000원"],
+        notes: "- 바닥배관 역류 확인 후 스프링 통수작업 완료\n- 작업 후 정상 배수 확인 후 퇴점하였습니다."
+    },
     "STARBUCKS": {
-        actions: [
-            "백룸 제빙기 배수관 통수작업",
-            "바 아이스빈 주름관 고정 및 통수작업",
-            "싱크대 수전 교체작업 및 고압호스 연결작업",
-            "천정 누수 점검 및 배관 보수작업"
-        ],
+        actions: ["백룸 제빙기 배수관 통수작업", "바 아이스빈 주름관 고정 및 통수작업", "싱크대 수전 교체작업 및 고압호스 연결작업", "천정 누수 점검 및 배관 보수작업"],
         prices: ["통수공 2인 / 2인작업 협의완료\n내시경촬영 협의완료", "자재비 별도 / 인건비 협의", "빌지작성"],
         notes: "- 제빙기 배수관 역류현상 확인 후 통수 완료\n- 작업 후 정상배수 확인 후 퇴점하였습니다."
     },
     "GS": {
-        actions: [
-            "내부배관 및 외부배관 통수작업",
-            "음식물처리기 이물질 제거 및 통수작업",
-            "스프레이건 고압호스 교체작업",
-            "단니플 및 배관 부속 교체"
-        ],
-        prices: ["내부배관 150,000원 / 외부배관 250,000원", "고압호스 4ea 32,000원\n단니플 3ea 9,000원\n인건비 협의", "빌지작성"],
+        actions: ["내부배관 및 외부배관 통수작업", "음식물처리기 이물질 제거 및 통수작업", "스프레이건 고압호스 교체작업", "단니플 및 배관 부속 교체"],
+        prices: ["내부배관 150,000원 / 외부배관 250,000원", "고압호스 4ea 32,000원\n단니플 3ea 9,000원\n인건비 협의"],
         notes: "- 약 15m 진입시 통수되었습니다.\n- 추후 지속적 문제시 고압세척 안내 후 퇴점하였습니다."
     },
     "SEVEN": {
-        actions: [
-            "양변기 부속 set 교체작업",
-            "양변기 볼탑 및 피스톤 교체",
-            "세면대 폽업 및 트랩 교체작업",
-            "양변기 막힘 통수작업"
-        ],
+        actions: ["양변기 부속 set 교체작업", "양변기 볼탑 및 피스톤 교체", "세면대 폽업 및 트랩 교체작업", "양변기 막힘 통수작업"],
         prices: ["양변기 부속 set 20,000원 / 인건비 65,000원", "인건비 65,000원 / 빌지작성"],
         notes: "- 노후 파손으로 인한 새 부속 교체 완료하였습니다.\n- 작업 후 정상 작동 확인 후 퇴점하였습니다."
     },
@@ -124,6 +114,7 @@ const brandHistoryDB = {
 };
 
 const brandConfigs = {
+    BURGERKING: { label: "버거킹", color: "#da291c", f1: "점포명", f4: "비용/자재" },
     STARBUCKS: { label: "스타벅스", color: "#007042", f1: "장소/경유", f4: "금액(청구인원)/투입자재" },
     GS: { label: "GS25", color: "#00b0f0", f1: "점포명", f4: "비용/자재" },
     SEVEN: { label: "세븐일레븐", color: "#f58220", f1: "점포명", f4: "비용/자재" },
@@ -155,7 +146,9 @@ function toggleW(el, name) {
 
 function analyzeData() {
     const input = document.getElementById('inputOrder').value.toLowerCase();
-    if(input.includes("스타")) currentBrand = "STARBUCKS";
+    
+    if(input.includes("버거킹")) currentBrand = "BURGERKING";
+    else if(input.includes("스타")) currentBrand = "STARBUCKS";
     else if(input.includes("gs") || input.includes("지에스")) currentBrand = "GS";
     else if(input.includes("세븐")) currentBrand = "SEVEN";
     else currentBrand = "NORMAL";
