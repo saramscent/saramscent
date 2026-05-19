@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>설비 업체 인식 변환기 v25</title>
+    <title>설비 업체 인식 변환기 v26</title>
     <style>
         :root { --sb: #007042; --gs: #00b0f0; --se: #f58220; --bk: #da291c; --def: #2c3e50; }
         body { font-family: 'Malgun Gothic', sans-serif; max-width: 900px; margin: 0 auto; padding: 15px; background-color: #f4f7f9; }
@@ -25,7 +25,7 @@
 <body>
 
 <div class="card" id="mainCard">
-    <h2 style="margin:0 0 10px 0; font-size:17px;">🚚 업체 인식형 실이력 변환기 v25 <span id="typeBadge" style="background:#95a5a6; padding:2px 8px; border-radius:10px; font-size:11px; color:white;">미인식</span></h2>
+    <h2 style="margin:0 0 10px 0; font-size:17px;">🚚 업체 인식형 실이력 변환기 v26 <span id="typeBadge" style="background:#95a5a6; padding:2px 8px; border-radius:10px; font-size:11px; color:white;">미인식</span></h2>
     
     <label>1. 오더 내용 붙여넣기</label>
     <textarea id="inputOrder" style="height:100px;" placeholder="카톡 오더 내용을 붙여넣으세요..."></textarea>
@@ -41,7 +41,7 @@
         <div class="form-group">
             <label>4. 금액/자재 (업체 인식 결과)</label>
             <select id="priceSelect" onchange="syncField('priceSelect', 'customPrice')"></select>
-            <textarea id="customPrice" style="height:60px;" placeholder="비비용 내역"></textarea>
+            <textarea id="customPrice" style="height:60px;" placeholder="비용 내역"></textarea>
         </div>
     </div>
 
@@ -88,7 +88,7 @@ let selectedWorkers = [];
 const brandHistoryDB = {
     "BURGERKING": {
         actions: ["바닥배관 통수작업", "바닥배관 전체통수"],
-        prices: ["150,000원", "300,000원"],
+        prices: ["15 (청춘 12 nch 3)\n확인서 작성 점포", "150,000원", "300,000원"],
         notes: "- 바닥배관 역류 확인 후 스프링 통수작업 완료\n- 작업 후 정상 배수 확인 후 퇴점하였습니다."
     },
     "STARBUCKS": {
