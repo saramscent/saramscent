@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>설비 업체 인식 변환기 v31</title>
+    <title>설비 업체 인식 변환기 v32</title>
     <style>
         :root { --sb: #007042; --gs: #00b0f0; --se: #f58220; --bk: #da291c; --cu: #652d90; --def: #2c3e50; }
         body { font-family: 'Malgun Gothic', sans-serif; max-width: 900px; margin: 0 auto; padding: 15px; background-color: #f4f7f9; }
@@ -31,7 +31,7 @@
 <body>
 
 <div class="card" id="mainCard">
-    <h2 style="margin:0 0 10px 0; font-size:17px;">🚚 업체 인식형 실이력 변환기 v31 <span id="typeBadge" style="background:#95a5a6; padding:2px 8px; border-radius:10px; font-size:11px; color:white;">미인식</span></h2>
+    <h2 style="margin:0 0 10px 0; font-size:17px;">🚚 업체 인식형 실이력 변환기 v32 <span id="typeBadge" style="background:#95a5a6; padding:2px 8px; border-radius:10px; font-size:11px; color:white;">미인식</span></h2>
     
     <label>1. 오더 내용 붙여넣기</label>
     <textarea id="inputOrder" style="height:100px;" placeholder="카톡 오더 내용을 붙여넣으세요..."></textarea>
@@ -46,12 +46,19 @@
             <div id="cvsActionArea" class="checkbox-group" style="display:none;"></div>
             
             <!-- 드롭다운 방식 영역 (스타벅스, 버거킹, 기타) -->
-            <select id="actionSelect" onchange="syncField('actionSelect', 'customAction')" style="display:none;"></select>
+            <select id="actionSelect" onchange="handleActionChange()" style="display:none;"></select>
             
             <input id="customAction" placeholder="조치내역">
         </div>
         <div class="form-group">
             <label>4. 금액/자재 (업체 인식 결과)</label>
+            
+            <!-- 버거킹 전용 확인서 선택 드롭다운 -->
+            <select id="bkDocSelect" onchange="updateBKPrice()" style="display:none; margin-bottom:5px;">
+                <option value="확인서 작성 점포">확인서 작성 점포</option>
+                <option value="확인서 미작성 점포">확인서 미작성 점포</option>
+            </select>
+
             <select id="priceSelect" onchange="syncField('priceSelect', 'customPrice')" style="display:none;"></select>
             <textarea id="customPrice" style="height:90px;" placeholder="비용 내역"></textarea>
         </div>
@@ -112,10 +119,16 @@ const cvsOptions = [
     "외부배관 세척작업"
 ];
 
+// 버거킹 조치내용별 금액 매핑
+const bkPriceMap = {
+    "바닥배관 통수작업": "15 (청춘12 nch3)",
+    "바닥배관 전체통수작업": "30 (청춘24 nch6)",
+    "바닥배관 전기 고압세척작업": "45 (청춘36 nch9)"
+};
+
 const brandHistoryDB = {
     "BURGERKING": {
-        actions: ["바닥배관 통수작업", "바닥배관 전체통수작업", "바닥배관 전기 고압 세척작업"],
-        prices: ["15 (청춘 12 nch 3)", "30 (청춘 24 nch 6)", "45 (청춘 36 nch 9)", "as", "확인서 작성 점포", "확인서 미작성 점포"],
+        actions: ["바닥배관 통수작업", "바닥배관 전체통수작업", "바닥배관 전기 고압세척작업", "as"],
         notes: "- 바닥배관 역류 확인 후 작업 완료\n- 작업 후 정상 배수 확인 후 퇴점하였습니다."
     },
     "STARBUCKS": {
@@ -187,6 +200,9 @@ function analyzeData() {
     const cvsArea = document.getElementById('cvsActionArea');
     const actSelect = document.getElementById('actionSelect');
     const priceSelect = document.getElementById('priceSelect');
+    const bkDocSelect = document.getElementById('bkDocSelect');
+
+    bkDocSelect.style.display = "none";
 
     if (["GS", "CU", "SEVEN"].includes(currentBrand)) {
         cvsArea.style.display = "flex";
@@ -208,26 +224,68 @@ function analyzeData() {
     } else {
         cvsArea.style.display = "none";
         actSelect.style.display = "block";
-        priceSelect.style.display = "block";
 
         const data = brandHistoryDB[currentBrand] || brandHistoryDB["NORMAL"];
-        const updateS = (id, list, target) => {
-            const el = document.getElementById(id);
-            el.innerHTML = `<option value="">-- 업체 인식 결과 --</option>`;
-            list.forEach(i => { 
-                const opt = document.createElement('option'); 
-                opt.value = i; 
-                opt.innerText = i.split('\n')[0].substring(0, 30); 
-                el.appendChild(opt); 
-            });
-            el.innerHTML += '<option value="direct">✏️ 직접 입력</option>';
-            document.getElementById(target).value = list[0] || ""; 
-            el.selectedIndex = 1;
-        };
+        
+        // 조치내용 옵션 구성
+        actSelect.innerHTML = `<option value="">-- 업체 인식 결과 --</option>`;
+        data.actions.forEach(i => { 
+            const opt = document.createElement('option'); 
+            opt.value = i; 
+            opt.innerText = i; 
+            actSelect.appendChild(opt); 
+        });
+        actSelect.innerHTML += '<option value="direct">✏️ 직접 입력</option>';
+        actSelect.selectedIndex = 1;
+        document.getElementById('customAction').value = data.actions[0] || "";
 
-        updateS('actionSelect', data.actions, 'customAction');
-        updateS('priceSelect', data.prices, 'customPrice');
+        if (currentBrand === "BURGERKING") {
+            priceSelect.style.display = "none";
+            bkDocSelect.style.display = "block";
+            bkDocSelect.selectedIndex = 0; // 기본값: 확인서 작성 점포
+            updateBKPrice();
+        } else {
+            priceSelect.style.display = "block";
+            const updateS = (id, list, target) => {
+                const el = document.getElementById(id);
+                el.innerHTML = `<option value="">-- 업체 인식 결과 --</option>`;
+                list.forEach(i => { 
+                    const opt = document.createElement('option'); 
+                    opt.value = i; 
+                    opt.innerText = i.split('\n')[0].substring(0, 30); 
+                    el.appendChild(opt); 
+                });
+                el.innerHTML += '<option value="direct">✏️ 직접 입력</option>';
+                document.getElementById(target).value = list[0] || ""; 
+                el.selectedIndex = 1;
+            };
+            updateS('priceSelect', data.prices, 'customPrice');
+        }
+
         document.getElementById('customNote').value = data.notes;
+    }
+}
+
+function handleActionChange() {
+    syncField('actionSelect', 'customAction');
+    if (currentBrand === "BURGERKING") {
+        updateBKPrice();
+    }
+}
+
+function updateBKPrice() {
+    const actionVal = document.getElementById('customAction').value;
+    const docVal = document.getElementById('bkDocSelect').value;
+    
+    if (actionVal === "as") {
+        document.getElementById('customPrice').value = `as\n${docVal}`;
+    } else {
+        const basePrice = bkPriceMap[actionVal] || "";
+        if (basePrice) {
+            document.getElementById('customPrice').value = `${basePrice}\n${docVal}`;
+        } else {
+            document.getElementById('customPrice').value = docVal;
+        }
     }
 }
 
@@ -260,7 +318,6 @@ function syncField(sid, iid) {
     if(s.value !== "direct" && s.value !== "") i.value = s.value;
 }
 
-// 작업시간 간소화 생성 함수
 function formatTimeString() {
     const sY = document.getElementById('sYear').value;
     const sM = document.getElementById('sMonth').value;
@@ -278,16 +335,12 @@ function formatTimeString() {
     let endText = "";
 
     if (sY === eY && sM === eM && sD === eD) {
-        // 연/월/일이 모두 같은 경우 -> 시간/분만 표시
         endText = `${eH}시${em}분`;
     } else if (sY === eY && sM === eM) {
-        // 일만 달라진 경우 -> 일 시간/분 표시
         endText = `${eD}일 ${eH}시${em}분`;
     } else if (sY === eY) {
-        // 월/일이 달라진 경우 -> 월 일 시간/분 표시
         endText = `${eM}월${eD}일 ${eH}시${em}분`;
     } else {
-        // 연도까지 달라진 경우 -> 전체 표시
         endText = `${eY}년 ${eM}월${eD}일 ${eH}시${em}분`;
     }
 
@@ -297,7 +350,6 @@ function formatTimeString() {
 function generateReport() {
     const input = document.getElementById('inputOrder').value;
     const config = brandConfigs[currentBrand];
-    
     const timeStr = formatTimeString();
     
     const locM = input.match(/(?:점포명(?:,경유)?\s*:\s*)(.*)/);
