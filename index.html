@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>설비 업체 인식 변환기 v33</title>
+    <title>설비 업체 인식 변환기 v34</title>
     <style>
         :root { --sb: #007042; --gs: #00b0f0; --se: #f58220; --bk: #da291c; --cu: #652d90; --def: #2c3e50; }
         body { font-family: 'Malgun Gothic', sans-serif; max-width: 900px; margin: 0 auto; padding: 15px; background-color: #f4f7f9; }
@@ -31,7 +31,7 @@
 <body>
 
 <div class="card" id="mainCard">
-    <h2 style="margin:0 0 10px 0; font-size:17px;">🚚 업체 인식형 실이력 변환기 v33 <span id="typeBadge" style="background:#95a5a6; padding:2px 8px; border-radius:10px; font-size:11px; color:white;">미인식</span></h2>
+    <h2 style="margin:0 0 10px 0; font-size:17px;">🚚 업체 인식형 실이력 변환기 v34 <span id="typeBadge" style="background:#95a5a6; padding:2px 8px; border-radius:10px; font-size:11px; color:white;">미인식</span></h2>
     
     <label>1. 오더 내용 붙여넣기</label>
     <textarea id="inputOrder" style="height:100px;" placeholder="카톡 오더 내용을 붙여넣으세요..."></textarea>
@@ -45,7 +45,7 @@
             <!-- 편의점 다중 선택용 영역 -->
             <div id="cvsActionArea" class="checkbox-group" style="display:none;"></div>
             
-            <!-- 드롭다운 방식 영역 (스타벅스, 버거킹, 기타) -->
+            <!-- 드롭다운 방식 영역 -->
             <select id="actionSelect" onchange="handleActionChange()" style="display:none;"></select>
             
             <input id="customAction" placeholder="조치내역">
@@ -64,6 +64,15 @@
                 <option value="확인서 작성 점포">확인서 작성 점포</option>
                 <option value="확인서 미작성 점포">확인서 미작성 점포</option>
             </select>
+
+            <!-- GS수퍼 전용 옵션 영역 -->
+            <select id="gsSuperPriceSelect" onchange="updateGSSuperPrice()" style="display:none; margin-bottom:5px;">
+                <option value="18만원">18만원</option>
+                <option value="협의">협의</option>
+                <option value="as">as</option>
+                <option value="direct">✏️ 직접 입력</option>
+            </select>
+            <input id="gsSuperManager" placeholder="담당자 이름 (예: 김철수)" oninput="updateGSSuperPrice()" style="display:none; margin-bottom:5px;">
 
             <select id="priceSelect" onchange="syncField('priceSelect', 'customPrice')" style="display:none;"></select>
             <textarea id="customPrice" style="height:90px;" placeholder="비용 내역"></textarea>
@@ -111,7 +120,6 @@
 let currentBrand = "NORMAL";
 let selectedWorkers = [];
 
-// 편의점 배관 항목별 단가 DB
 const cvsPriceTable = {
     "GS":    { "내부배관 통수작업": 15, "외부배관 통수작업": 25, "내부배관 세척작업": 40, "외부배관 세척작업": 70 },
     "CU":    { "내부배관 통수작업": 15, "외부배관 통수작업": 25, "내부배관 세척작업": 40, "외부배관 세척작업": 70 },
@@ -125,7 +133,6 @@ const cvsOptions = [
     "외부배관 세척작업"
 ];
 
-// 버거킹 조치내용별 금액 매핑
 const bkPriceMap = {
     "바닥배관 통수작업": "15 (청춘12 nch3)",
     "바닥배관 전체통수작업": "30 (청춘24 nch6)",
@@ -142,6 +149,10 @@ const brandHistoryDB = {
         prices: ["통수공 2인 / 2인작업 협의완료\n내시경촬영 협의완료", "자재비 별도 / 인건비 협의", "빌지작성"],
         notes: "- 제빙기 배수관 역류현상 확인 후 통수 완료\n- 작업 후 정상배수 확인 후 퇴점하였습니다."
     },
+    "GSSUPER": {
+        actions: [],
+        notes: "- 현장 점검 및 작업 완료 후 정상 배수 확인"
+    },
     "NORMAL": {
         actions: ["현장 점검 및 조치 완료", "파손 부속 교체작업"],
         prices: ["인건비 및 자재비 협의", "빌지작성"],
@@ -151,6 +162,7 @@ const brandHistoryDB = {
 
 const brandConfigs = {
     BURGERKING: { label: "버거킹", color: "#da291c", f1: "점포명", f4: "금액(청구인원)/투입자재" },
+    GSSUPER:   { label: "GS수퍼", color: "#005aab", f1: "점포명", f4: "금액(청구인원)/투입자재" },
     GS:        { label: "GS25", color: "#00b0f0", f1: "점포명", f4: "금액(청구인원)/투입자재" },
     CU:        { label: "CU", color: "#652d90", f1: "점포명", f4: "금액(청구인원)/투입자재" },
     SEVEN:     { label: "세븐일레븐", color: "#f58220", f1: "점포명", f4: "금액(청구인원)/투입자재" },
@@ -186,7 +198,9 @@ function analyzeData() {
     
     if (/(버거킹|burgerking|\bbk\b)/i.test(input)) {
         currentBrand = "BURGERKING";
-    } else if (/(gs25|지에스|\bgs\b)/i.test(input) && !input.includes("수퍼") && !input.includes("슈퍼") && !input.includes("더프레시")) {
+    } else if (/(수퍼|슈퍼|더프레시)/i.test(input) && /(gs|지에스)/i.test(input)) {
+        currentBrand = "GSSUPER";
+    } else if (/(gs25|지에스|\bgs\b)/i.test(input)) {
         currentBrand = "GS";
     } else if (/(\bcu\b|씨유)/i.test(input)) {
         currentBrand = "CU";
@@ -208,9 +222,13 @@ function analyzeData() {
     const priceSelect = document.getElementById('priceSelect');
     const bkPriceSelect = document.getElementById('bkPriceSelect');
     const bkDocSelect = document.getElementById('bkDocSelect');
+    const gsSuperPriceSelect = document.getElementById('gsSuperPriceSelect');
+    const gsSuperManager = document.getElementById('gsSuperManager');
 
     bkPriceSelect.style.display = "none";
     bkDocSelect.style.display = "none";
+    gsSuperPriceSelect.style.display = "none";
+    gsSuperManager.style.display = "none";
 
     if (["GS", "CU", "SEVEN"].includes(currentBrand)) {
         cvsArea.style.display = "flex";
@@ -229,13 +247,28 @@ function analyzeData() {
         updateCVSSelection();
         document.getElementById('customNote').value = "- 작업 완료 후 정상 작동 확인";
 
+    } else if (currentBrand === "GSSUPER") {
+        cvsArea.style.display = "none";
+        actSelect.style.display = "none";
+        priceSelect.style.display = "none";
+        
+        document.getElementById('customAction').value = "";
+        document.getElementById('customAction').placeholder = "조치내역을 직접 입력하세요";
+
+        gsSuperPriceSelect.style.display = "block";
+        gsSuperManager.style.display = "block";
+        gsSuperPriceSelect.selectedIndex = 0;
+        gsSuperManager.value = "";
+        updateGSSuperPrice();
+
+        document.getElementById('customNote').value = brandHistoryDB["GSSUPER"].notes;
+
     } else {
         cvsArea.style.display = "none";
         actSelect.style.display = "block";
 
         const data = brandHistoryDB[currentBrand] || brandHistoryDB["NORMAL"];
         
-        // 조치내용 옵션 구성
         actSelect.innerHTML = `<option value="">-- 업체 인식 결과 --</option>`;
         data.actions.forEach(i => { 
             const opt = document.createElement('option'); 
@@ -252,8 +285,8 @@ function analyzeData() {
             bkPriceSelect.style.display = "block";
             bkDocSelect.style.display = "block";
             
-            bkPriceSelect.selectedIndex = 0; // 자동 금액 적용
-            bkDocSelect.selectedIndex = 0;   // 확인서 작성 점포
+            bkPriceSelect.selectedIndex = 0;
+            bkDocSelect.selectedIndex = 0;
             updateBKPrice();
         } else {
             priceSelect.style.display = "block";
@@ -301,9 +334,8 @@ function updateBKPrice() {
     if (priceMode === "as") {
         document.getElementById('customPrice').value = `as\n${docVal}`;
     } else if (priceMode === "direct") {
-        // 직접 입력 선택시 사용자가 직접 수정한 내용을 유지
         return;
-    } else { // auto (자동 매칭)
+    } else {
         const basePrice = bkPriceMap[actionVal] || "";
         if (basePrice) {
             document.getElementById('customPrice').value = `${basePrice}\n${docVal}`;
@@ -311,6 +343,23 @@ function updateBKPrice() {
             document.getElementById('customPrice').value = docVal;
         }
     }
+}
+
+function updateGSSuperPrice() {
+    const selectedOpt = document.getElementById('gsSuperPriceSelect').value;
+    const managerName = document.getElementById('gsSuperManager').value.trim();
+    
+    if (selectedOpt === "direct") {
+        document.getElementById('customPrice').focus();
+        return;
+    }
+
+    let priceText = `${selectedOpt}\n빌지작성`;
+    if (managerName) {
+        priceText += `\n담당자 : ${managerName}`;
+    }
+    
+    document.getElementById('customPrice').value = priceText;
 }
 
 function updateCVSSelection() {
