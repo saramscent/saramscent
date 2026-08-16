@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>설비 업체 인식 변환기 v32</title>
+    <title>설비 업체 인식 변환기 v33</title>
     <style>
         :root { --sb: #007042; --gs: #00b0f0; --se: #f58220; --bk: #da291c; --cu: #652d90; --def: #2c3e50; }
         body { font-family: 'Malgun Gothic', sans-serif; max-width: 900px; margin: 0 auto; padding: 15px; background-color: #f4f7f9; }
@@ -31,7 +31,7 @@
 <body>
 
 <div class="card" id="mainCard">
-    <h2 style="margin:0 0 10px 0; font-size:17px;">🚚 업체 인식형 실이력 변환기 v32 <span id="typeBadge" style="background:#95a5a6; padding:2px 8px; border-radius:10px; font-size:11px; color:white;">미인식</span></h2>
+    <h2 style="margin:0 0 10px 0; font-size:17px;">🚚 업체 인식형 실이력 변환기 v33 <span id="typeBadge" style="background:#95a5a6; padding:2px 8px; border-radius:10px; font-size:11px; color:white;">미인식</span></h2>
     
     <label>1. 오더 내용 붙여넣기</label>
     <textarea id="inputOrder" style="height:100px;" placeholder="카톡 오더 내용을 붙여넣으세요..."></textarea>
@@ -53,7 +53,13 @@
         <div class="form-group">
             <label>4. 금액/자재 (업체 인식 결과)</label>
             
-            <!-- 버거킹 전용 확인서 선택 드롭다운 -->
+            <!-- 버거킹 전용 옵션 영역 -->
+            <select id="bkPriceSelect" onchange="handleBKPriceSelectChange()" style="display:none; margin-bottom:5px;">
+                <option value="auto">자동 금액 적용</option>
+                <option value="as">as</option>
+                <option value="direct">✏️ 직접 입력</option>
+            </select>
+            
             <select id="bkDocSelect" onchange="updateBKPrice()" style="display:none; margin-bottom:5px;">
                 <option value="확인서 작성 점포">확인서 작성 점포</option>
                 <option value="확인서 미작성 점포">확인서 미작성 점포</option>
@@ -128,7 +134,7 @@ const bkPriceMap = {
 
 const brandHistoryDB = {
     "BURGERKING": {
-        actions: ["바닥배관 통수작업", "바닥배관 전체통수작업", "바닥배관 전기 고압세척작업", "as"],
+        actions: ["바닥배관 통수작업", "바닥배관 전체통수작업", "바닥배관 전기 고압세척작업"],
         notes: "- 바닥배관 역류 확인 후 작업 완료\n- 작업 후 정상 배수 확인 후 퇴점하였습니다."
     },
     "STARBUCKS": {
@@ -200,8 +206,10 @@ function analyzeData() {
     const cvsArea = document.getElementById('cvsActionArea');
     const actSelect = document.getElementById('actionSelect');
     const priceSelect = document.getElementById('priceSelect');
+    const bkPriceSelect = document.getElementById('bkPriceSelect');
     const bkDocSelect = document.getElementById('bkDocSelect');
 
+    bkPriceSelect.style.display = "none";
     bkDocSelect.style.display = "none";
 
     if (["GS", "CU", "SEVEN"].includes(currentBrand)) {
@@ -241,8 +249,11 @@ function analyzeData() {
 
         if (currentBrand === "BURGERKING") {
             priceSelect.style.display = "none";
+            bkPriceSelect.style.display = "block";
             bkDocSelect.style.display = "block";
-            bkDocSelect.selectedIndex = 0; // 기본값: 확인서 작성 점포
+            
+            bkPriceSelect.selectedIndex = 0; // 자동 금액 적용
+            bkDocSelect.selectedIndex = 0;   // 확인서 작성 점포
             updateBKPrice();
         } else {
             priceSelect.style.display = "block";
@@ -273,13 +284,26 @@ function handleActionChange() {
     }
 }
 
+function handleBKPriceSelectChange() {
+    const pMode = document.getElementById('bkPriceSelect').value;
+    if (pMode === "direct") {
+        document.getElementById('customPrice').focus();
+    } else {
+        updateBKPrice();
+    }
+}
+
 function updateBKPrice() {
     const actionVal = document.getElementById('customAction').value;
     const docVal = document.getElementById('bkDocSelect').value;
-    
-    if (actionVal === "as") {
+    const priceMode = document.getElementById('bkPriceSelect').value;
+
+    if (priceMode === "as") {
         document.getElementById('customPrice').value = `as\n${docVal}`;
-    } else {
+    } else if (priceMode === "direct") {
+        // 직접 입력 선택시 사용자가 직접 수정한 내용을 유지
+        return;
+    } else { // auto (자동 매칭)
         const basePrice = bkPriceMap[actionVal] || "";
         if (basePrice) {
             document.getElementById('customPrice').value = `${basePrice}\n${docVal}`;
