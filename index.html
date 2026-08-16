@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>설비 업체 인식 변환기 v27</title>
+    <title>설비 업체 인식 변환기 v28</title>
     <style>
         :root { --sb: #007042; --gs: #00b0f0; --se: #f58220; --bk: #da291c; --def: #2c3e50; }
         body { font-family: 'Malgun Gothic', sans-serif; max-width: 900px; margin: 0 auto; padding: 15px; background-color: #f4f7f9; }
@@ -25,7 +25,7 @@
 <body>
 
 <div class="card" id="mainCard">
-    <h2 style="margin:0 0 10px 0; font-size:17px;">🚚 업체 인식형 실이력 변환기 v27 <span id="typeBadge" style="background:#95a5a6; padding:2px 8px; border-radius:10px; font-size:11px; color:white;">미인식</span></h2>
+    <h2 style="margin:0 0 10px 0; font-size:17px;">🚚 업체 인식형 실이력 변환기 v28 <span id="typeBadge" style="background:#95a5a6; padding:2px 8px; border-radius:10px; font-size:11px; color:white;">미인식</span></h2>
     
     <label>1. 오더 내용 붙여넣기</label>
     <textarea id="inputOrder" style="height:100px;" placeholder="카톡 오더 내용을 붙여넣으세요..."></textarea>
@@ -68,6 +68,7 @@
             <div class="worker-btn" onclick="toggleW(this, '김현민')">김현민</div>
             <div class="worker-btn" onclick="toggleW(this, '김형우')">김형우</div>
             <div class="worker-btn" onclick="toggleW(this, '손정훈')">손정훈</div>
+            <div class="worker-btn" onclick="toggleW(this, '주지홍')">주지홍</div>
         </div>
     </div>
 
@@ -158,11 +159,17 @@ function toggleW(el, name) {
 function analyzeData() {
     const input = document.getElementById('inputOrder').value.toLowerCase();
     
-    if(input.includes("버거킹")) currentBrand = "BURGERKING";
-    else if(input.includes("스타")) currentBrand = "STARBUCKS";
-    else if(input.includes("gs") || input.includes("지에스")) currentBrand = "GS";
-    else if(input.includes("세븐")) currentBrand = "SEVEN";
-    else currentBrand = "NORMAL";
+    if(input.includes("버거킹") || input.includes("burgerking") || input.includes("bk")) {
+        currentBrand = "BURGERKING";
+    } else if(input.includes("스타벅스") || input.includes("스타") || input.includes("starbucks") || input.includes("sb")) {
+        currentBrand = "STARBUCKS";
+    } else if(input.includes("gs") || input.includes("지에스")) {
+        currentBrand = "GS";
+    } else if(input.includes("세븐") || input.includes("seven")) {
+        currentBrand = "SEVEN";
+    } else {
+        currentBrand = "NORMAL";
+    }
 
     const config = brandConfigs[currentBrand];
     document.getElementById('typeBadge').innerText = config.label;
@@ -173,9 +180,15 @@ function analyzeData() {
     const updateS = (id, list, target) => {
         const el = document.getElementById(id);
         el.innerHTML = `<option value="">-- 업체 인식 결과 --</option>`;
-        list.forEach(i => { const opt = document.createElement('option'); opt.value = i; opt.innerText = i.split('\n')[0].substring(0, 30); el.appendChild(opt); });
+        list.forEach(i => { 
+            const opt = document.createElement('option'); 
+            opt.value = i; 
+            opt.innerText = i.split('\n')[0].substring(0, 30); 
+            el.appendChild(opt); 
+        });
         el.innerHTML += '<option value="direct">✏️ 직접 입력</option>';
-        document.getElementById(target).value = list[0] || ""; el.selectedIndex = 1;
+        document.getElementById(target).value = list[0] || ""; 
+        el.selectedIndex = 1;
     };
 
     updateS('actionSelect', data.actions, 'customAction');
