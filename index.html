@@ -3,16 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>설비 업체 인식 변환기 v29</title>
+    <title>설비 업체 인식 변환기 v30</title>
     <style>
-        :root { --sb: #007042; --gs: #00b0f0; --se: #f58220; --bk: #da291c; --def: #2c3e50; }
+        :root { --sb: #007042; --gs: #00b0f0; --se: #f58220; --bk: #da291c; --cu: #652d90; --def: #2c3e50; }
         body { font-family: 'Malgun Gothic', sans-serif; max-width: 900px; margin: 0 auto; padding: 15px; background-color: #f4f7f9; }
         .card { background: white; padding: 15px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 20px; border-top: 5px solid var(--def); }
         label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 13px; color: #444; }
         input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; box-sizing: border-box; margin-bottom: 10px; }
         .btn-detect { width: 100%; padding: 12px; background: #2c3e50; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-bottom: 15px; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .grid { display: grid; grid-grid-columns: 1fr 1fr; grid-template-columns: 1fr 1fr; gap: 10px; }
         .form-group { background: #fdfdfd; padding: 12px; border-radius: 10px; border: 1px solid #eee; }
+        
+        /* Checkbox Group UI */
+        .checkbox-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+        .checkbox-label { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: normal; cursor: pointer; background: #fff; padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; }
+        .checkbox-label input[type="checkbox"] { width: auto; margin-bottom: 0; cursor: pointer; }
+
         .worker-group { display: flex; flex-wrap: wrap; gap: 6px; }
         .worker-btn { background: #fff; padding: 10px 0; border-radius: 8px; font-size: 12px; cursor: pointer; border: 1px solid #ddd; flex: 1 1 23%; text-align: center; font-weight: bold; }
         .worker-btn.active { background: #34495e !important; color: white !important; }
@@ -25,7 +31,7 @@
 <body>
 
 <div class="card" id="mainCard">
-    <h2 style="margin:0 0 10px 0; font-size:17px;">🚚 업체 인식형 실이력 변환기 v29 <span id="typeBadge" style="background:#95a5a6; padding:2px 8px; border-radius:10px; font-size:11px; color:white;">미인식</span></h2>
+    <h2 style="margin:0 0 10px 0; font-size:17px;">🚚 업체 인식형 실이력 변환기 v30 <span id="typeBadge" style="background:#95a5a6; padding:2px 8px; border-radius:10px; font-size:11px; color:white;">미인식</span></h2>
     
     <label>1. 오더 내용 붙여넣기</label>
     <textarea id="inputOrder" style="height:100px;" placeholder="카톡 오더 내용을 붙여넣으세요..."></textarea>
@@ -35,13 +41,19 @@
     <div class="grid">
         <div class="form-group">
             <label>3. 조치내용 (업체 인식 결과)</label>
-            <select id="actionSelect" onchange="syncField('actionSelect', 'customAction')"></select>
+            
+            <!-- 편의점 다중 선택용 영역 -->
+            <div id="cvsActionArea" class="checkbox-group" style="display:none;"></div>
+            
+            <!-- 드롭다운 방식 영역 (스타벅스, 버거킹, 기타) -->
+            <select id="actionSelect" onchange="syncField('actionSelect', 'customAction')" style="display:none;"></select>
+            
             <input id="customAction" placeholder="조치내역">
         </div>
         <div class="form-group">
             <label>4. 금액/자재 (업체 인식 결과)</label>
-            <select id="priceSelect" onchange="syncField('priceSelect', 'customPrice')"></select>
-            <textarea id="customPrice" style="height:60px;" placeholder="비용 내역"></textarea>
+            <select id="priceSelect" onchange="syncField('priceSelect', 'customPrice')" style="display:none;"></select>
+            <textarea id="customPrice" style="height:90px;" placeholder="비용 내역"></textarea>
         </div>
     </div>
 
@@ -86,32 +98,25 @@
 let currentBrand = "NORMAL";
 let selectedWorkers = [];
 
+// 편의점 배관 항목별 단가 DB
+const cvsPriceTable = {
+    "GS":    { "내부배관 통수작업": 15, "외부배관 통수작업": 25, "내부배관 세척작업": 40, "외부배관 세척작업": 70 },
+    "CU":    { "내부배관 통수작업": 15, "외부배관 통수작업": 25, "내부배관 세척작업": 40, "외부배관 세척작업": 70 },
+    "SEVEN": { "내부배관 통수작업": 10, "외부배관 통수작업": 17, "내부배관 세척작업": 27, "외부배관 세척작업": 64 }
+};
+
+const cvsOptions = [
+    "내부배관 통수작업",
+    "외부배관 통수작업",
+    "내부배관 세척작업",
+    "외부배관 세척작업"
+];
+
 const brandHistoryDB = {
     "BURGERKING": {
-        actions: [
-            "바닥배관 통수작업",
-            "바닥배관 전체통수작업",
-            "바닥배관 전기 고압 세척작업"
-        ],
-        prices: [
-            "15 (청춘 12 nch 3)",
-            "30 (청춘 24 nch 6)",
-            "45 (청춘 36 nch 9)",
-            "as",
-            "확인서 작성 점포",
-            "확인서 미작성 점포"
-        ],
+        actions: ["바닥배관 통수작업", "바닥배관 전체통수작업", "바닥배관 전기 고압 세척작업"],
+        prices: ["15 (청춘 12 nch 3)", "30 (청춘 24 nch 6)", "45 (청춘 36 nch 9)", "as", "확인서 작성 점포", "확인서 미작성 점포"],
         notes: "- 바닥배관 역류 확인 후 작업 완료\n- 작업 후 정상 배수 확인 후 퇴점하였습니다."
-    },
-    "GS": {
-        actions: ["내부배관 및 외부배관 통수작업", "음식물처리기 이물질 제거 및 통수작업", "스프레이건 고압호스 교체작업", "단니플 및 배관 부속 교체"],
-        prices: ["내부배관 150,000원 / 외부배관 250,000원", "고압호스 4ea 32,000원\n단니플 3ea 9,000원\n인건비 협의"],
-        notes: "- 약 15m 진입시 통수되었습니다.\n- 추후 지속적 문제시 고압세척 안내 후 퇴점하였습니다."
-    },
-    "SEVEN": {
-        actions: ["양변기 부속 set 교체작업", "양변기 볼탑 및 피스톤 교체", "세면대 폽업 및 트랩 교체작업", "양변기 막힘 통수작업"],
-        prices: ["양변기 부속 set 20,000원 / 인건비 65,000원", "인건비 65,000원 / 빌지작성"],
-        notes: "- 노후 파손으로 인한 새 부속 교체 완료하였습니다.\n- 작업 후 정상 작동 확인 후 퇴점하였습니다."
     },
     "STARBUCKS": {
         actions: ["백룸 제빙기 배수관 통수작업", "바 아이스빈 주름관 고정 및 통수작업", "싱크대 수전 교체작업 및 고압호스 연결작업", "천정 누수 점검 및 배관 보수작업"],
@@ -127,10 +132,11 @@ const brandHistoryDB = {
 
 const brandConfigs = {
     BURGERKING: { label: "버거킹", color: "#da291c", f1: "점포명", f4: "금액(청구인원)/투입자재" },
-    GS: { label: "GS25", color: "#00b0f0", f1: "점포명", f4: "비용/자재" },
-    SEVEN: { label: "세븐일레븐", color: "#f58220", f1: "점포명", f4: "비용/자재" },
+    GS:        { label: "GS25", color: "#00b0f0", f1: "점포명", f4: "금액(청구인원)/투입자재" },
+    CU:        { label: "CU", color: "#652d90", f1: "점포명", f4: "금액(청구인원)/투입자재" },
+    SEVEN:     { label: "세븐일레븐", color: "#f58220", f1: "점포명", f4: "금액(청구인원)/투입자재" },
     STARBUCKS: { label: "스타벅스", color: "#007042", f1: "장소/경유", f4: "금액(청구인원)/투입자재" },
-    NORMAL: { label: "기타", color: "#95a5a6", f1: "점포명", f4: "금액/자재" }
+    NORMAL:    { label: "기타", color: "#95a5a6", f1: "점포명", f4: "금액/자재" }
 };
 
 function initTime() {
@@ -159,11 +165,13 @@ function toggleW(el, name) {
 function analyzeData() {
     const input = document.getElementById('inputOrder').value.toLowerCase();
     
-    // 브랜드 키워드 정규식 매칭 (GS25, 버거킹, 세븐일레븐 우선 판별)
+    // GS수퍼(더프레시)가 아닌 GS25 구분 처리 포함
     if (/(버거킹|burgerking|\bbk\b)/i.test(input)) {
         currentBrand = "BURGERKING";
-    } else if (/(gs25|지에스|\bgs\b)/i.test(input)) {
+    } else if (/(gs25|지에스|\bgs\b)/i.test(input) && !input.includes("수퍼") && !input.includes("슈퍼") && !input.includes("더프레시")) {
         currentBrand = "GS";
+    } else if (/(\bcu\b|씨유)/i.test(input)) {
+        currentBrand = "CU";
     } else if (/(세븐|7-eleven|seven)/i.test(input)) {
         currentBrand = "SEVEN";
     } else if (/(스타벅스|스타|\bsb\b|starbucks)/i.test(input)) {
@@ -177,24 +185,82 @@ function analyzeData() {
     document.getElementById('typeBadge').style.background = config.color;
     document.getElementById('mainCard').style.borderTopColor = config.color;
 
-    const data = brandHistoryDB[currentBrand];
-    const updateS = (id, list, target) => {
-        const el = document.getElementById(id);
-        el.innerHTML = `<option value="">-- 업체 인식 결과 --</option>`;
-        list.forEach(i => { 
-            const opt = document.createElement('option'); 
-            opt.value = i; 
-            opt.innerText = i.split('\n')[0].substring(0, 30); 
-            el.appendChild(opt); 
-        });
-        el.innerHTML += '<option value="direct">✏️ 직접 입력</option>';
-        document.getElementById(target).value = list[0] || ""; 
-        el.selectedIndex = 1;
-    };
+    const cvsArea = document.getElementById('cvsActionArea');
+    const actSelect = document.getElementById('actionSelect');
+    const priceSelect = document.getElementById('priceSelect');
 
-    updateS('actionSelect', data.actions, 'customAction');
-    updateS('priceSelect', data.prices, 'customPrice');
-    document.getElementById('customNote').value = data.notes;
+    // GS25, CU, 세븐일레븐 일 때 체크박스 UI 표시
+    if (["GS", "CU", "SEVEN"].includes(currentBrand)) {
+        cvsArea.style.display = "flex";
+        actSelect.style.display = "none";
+        priceSelect.style.display = "none";
+        
+        cvsArea.innerHTML = "";
+        cvsOptions.forEach((opt, idx) => {
+            const label = document.createElement('label');
+            label.className = "checkbox-label";
+            label.innerHTML = `<input type="checkbox" name="cvsOpt" value="${opt}" onchange="updateCVSSelection()"> ${opt}`;
+            cvsArea.appendChild(label);
+        });
+
+        // 기본 첫 번째 선택
+        cvsArea.querySelectorAll('input[type="checkbox"]')[0].checked = true;
+        updateCVSSelection();
+        document.getElementById('customNote').value = "- 작업 완료 후 정상 작동 확인";
+
+    } else {
+        // 기타/버거킹/스타벅스일 경우 기본 드롭다운 UI 표시
+        cvsArea.style.display = "none";
+        actSelect.style.display = "block";
+        priceSelect.style.display = "block";
+
+        const data = brandHistoryDB[currentBrand] || brandHistoryDB["NORMAL"];
+        const updateS = (id, list, target) => {
+            const el = document.getElementById(id);
+            el.innerHTML = `<option value="">-- 업체 인식 결과 --</option>`;
+            list.forEach(i => { 
+                const opt = document.createElement('option'); 
+                opt.value = i; 
+                opt.innerText = i.split('\n')[0].substring(0, 30); 
+                el.appendChild(opt); 
+            });
+            el.innerHTML += '<option value="direct">✏️ 직접 입력</option>';
+            document.getElementById(target).value = list[0] || ""; 
+            el.selectedIndex = 1;
+        };
+
+        updateS('actionSelect', data.actions, 'customAction');
+        updateS('priceSelect', data.prices, 'customPrice');
+        document.getElementById('customNote').value = data.notes;
+    }
+}
+
+function updateCVSSelection() {
+    const checkedBoxes = Array.from(document.querySelectorAll('input[name="cvsOpt"]:checked'));
+    const selectedActions = checkedBoxes.map(cb => cb.value);
+    
+    // 조치내용 텍스트 필드 업데이트
+    document.getElementById('customAction').value = selectedActions.join(', ');
+
+    // 단가 계산
+    let totalPrice = 0;
+    const table = cvsPriceTable[currentBrand];
+    selectedActions.forEach(act => {
+        if (table[act]) totalPrice += table[act];
+    });
+
+    // 금액/자재 포맷 적용
+    if (selectedActions.length === 0) {
+        document.getElementById('customPrice').value = "";
+        return;
+    }
+
+    if (currentBrand === "SEVEN") {
+        document.getElementById('customPrice').value = `${totalPrice}\n빌지작성\n경영주 협의완료`;
+    } else {
+        // GS25, CU
+        document.getElementById('customPrice').value = `${totalPrice}\n경영주와 협의완료\n빌지작성`;
+    }
 }
 
 function syncField(sid, iid) {
