@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>설비 업체 인식 변환기 v34</title>
+    <title>설비 업체 인식 변환기 v35</title>
     <style>
         :root { --sb: #007042; --gs: #00b0f0; --se: #f58220; --bk: #da291c; --cu: #652d90; --def: #2c3e50; }
         body { font-family: 'Malgun Gothic', sans-serif; max-width: 900px; margin: 0 auto; padding: 15px; background-color: #f4f7f9; }
@@ -31,7 +31,7 @@
 <body>
 
 <div class="card" id="mainCard">
-    <h2 style="margin:0 0 10px 0; font-size:17px;">🚚 업체 인식형 실이력 변환기 v34 <span id="typeBadge" style="background:#95a5a6; padding:2px 8px; border-radius:10px; font-size:11px; color:white;">미인식</span></h2>
+    <h2 style="margin:0 0 10px 0; font-size:17px;">🚚 업체 인식형 실이력 변환기 v35 <span id="typeBadge" style="background:#95a5a6; padding:2px 8px; border-radius:10px; font-size:11px; color:white;">미인식</span></h2>
     
     <label>1. 오더 내용 붙여넣기</label>
     <textarea id="inputOrder" style="height:100px;" placeholder="카톡 오더 내용을 붙여넣으세요..."></textarea>
@@ -119,6 +119,7 @@
 <script>
 let currentBrand = "NORMAL";
 let selectedWorkers = [];
+let parsedHistory = ""; // GS25 파싱 작업 이력 저장용 변수
 
 const cvsPriceTable = {
     "GS":    { "내부배관 통수작업": 15, "외부배관 통수작업": 25, "내부배관 세척작업": 40, "외부배관 세척작업": 70 },
@@ -194,8 +195,10 @@ function toggleW(el, name) {
 }
 
 function analyzeData() {
-    const input = document.getElementById('inputOrder').value.toLowerCase();
+    const inputRaw = document.getElementById('inputOrder').value;
+    const input = inputRaw.toLowerCase();
     
+    // 브랜드 판별
     if (/(버거킹|burgerking|\bbk\b)/i.test(input)) {
         currentBrand = "BURGERKING";
     } else if (/(수퍼|슈퍼|더프레시)/i.test(input) && /(gs|지에스)/i.test(input)) {
@@ -210,6 +213,19 @@ function analyzeData() {
         currentBrand = "STARBUCKS";
     } else {
         currentBrand = "NORMAL";
+    }
+
+    // GS25 브랜드일 경우, '6. 특이 사항' 영역에서 과거 작업 이력(날짜 포함) 자동 파싱
+    parsedHistory = "";
+    if (currentBrand === "GS") {
+        const noteMatch = inputRaw.match(/6\.\s*특이\s*사항\s*:\s*([\s\S]*?)(?=ㅡㅡ|8\/|\n\n[0-9]\.|$)/i);
+        if (noteMatch) {
+            const noteContent = noteMatch[1];
+            const historyLines = noteContent.split('\n')
+                .map(line => line.trim())
+                .filter(line => /\d{2}\.\d{2}\.\d{2}/.test(line)); // YY.MM.DD 형태 날짜가 포함된 행만 필터링
+            parsedHistory = historyLines.join('\n');
+        }
     }
 
     const config = brandConfigs[currentBrand];
@@ -427,7 +443,12 @@ function generateReport() {
     
     const locM = input.match(/(?:점포명(?:,경유)?\s*:\s*)(.*)/);
     const symM = input.match(/(?:증상\s*:\s*)(.*)/);
-    const res = `1. ${config.f1} : ${locM?locM[1].split('\n')[0].trim():'현장확인'}\n\n2. 접수내용 : ${symM?symM[1].split('\n')[0].trim():'내용확인'}\n\n3. 조치내용 : ${document.getElementById('customAction').value}\n\n4. ${config.f4} :\n${document.getElementById('customPrice').value}\n\n5. 작업시간 : ${timeStr}\n\n6. 특이사항 :\n${document.getElementById('customNote').value}\n\n7. 작업이력 :\n\n8. 작업자 : ${selectedWorkers.join(' ')}`;
+    
+    // GS25일 경우 파싱된 과거 작업 이력을 사용
+    const historyText = (currentBrand === "GS" && parsedHistory) ? parsedHistory : "";
+
+    const res = `1. ${config.f1} : ${locM?locM[1].split('\n')[0].trim():'현장확인'}\n\n2. 접수내용 : ${symM?symM[1].split('\n')[0].trim():'내용확인'}\n\n3. 조치내용 : ${document.getElementById('customAction').value}\n\n4. ${config.f4} :\n${document.getElementById('customPrice').value}\n\n5. 작업시간 : ${timeStr}\n\n6. 특이사항 :\n${document.getElementById('customNote').value}\n\n7. 작업이력 :\n${historyText}\n\n8. 작업자 : ${selectedWorkers.join(' ')}`;
+    
     document.getElementById('outputOrder').innerText = res;
 }
 
