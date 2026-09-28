@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>설비 업체 인식 변환기 v35</title>
+    <title>설비 업체 인식 변환기 v36</title>
     <style>
         :root { --sb: #007042; --gs: #00b0f0; --se: #f58220; --bk: #da291c; --cu: #652d90; --def: #2c3e50; }
         body { font-family: 'Malgun Gothic', sans-serif; max-width: 900px; margin: 0 auto; padding: 15px; background-color: #f4f7f9; }
@@ -20,7 +20,7 @@
         .checkbox-label input[type="checkbox"] { width: auto; margin-bottom: 0; cursor: pointer; }
 
         .worker-group { display: flex; flex-wrap: wrap; gap: 6px; }
-        .worker-btn { background: #fff; padding: 10px 0; border-radius: 8px; font-size: 12px; cursor: pointer; border: 1px solid #ddd; flex: 1 1 23%; text-align: center; font-weight: bold; }
+        .worker-btn { background: #fff; padding: 10px 0; border-radius: 8px; font-size: 12px; cursor: pointer; border: 1px solid #ddd; flex: 1 1 22%; text-align: center; font-weight: bold; }
         .worker-btn.active { background: #34495e !important; color: white !important; }
         .btn-main { width: 100%; padding: 18px; background: #27ae60; color: white; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; margin: 15px 0; }
         #outputOrder { height: 350px; background: #2c3e50; color: #ecf0f1; font-family: 'Consolas', monospace; font-size: 13px; border-radius: 8px; padding: 15px; overflow-y: auto; white-space: pre-wrap; line-height: 1.5; }
@@ -31,7 +31,7 @@
 <body>
 
 <div class="card" id="mainCard">
-    <h2 style="margin:0 0 10px 0; font-size:17px;">🚚 업체 인식형 실이력 변환기 v35 <span id="typeBadge" style="background:#95a5a6; padding:2px 8px; border-radius:10px; font-size:11px; color:white;">미인식</span></h2>
+    <h2 style="margin:0 0 10px 0; font-size:17px;">🚚 업체 인식형 실이력 변환기 v36 <span id="typeBadge" style="background:#95a5a6; padding:2px 8px; border-radius:10px; font-size:11px; color:white;">미인식</span></h2>
     
     <label>1. 오더 내용 붙여넣기</label>
     <textarea id="inputOrder" style="height:100px;" placeholder="카톡 오더 내용을 붙여넣으세요..."></textarea>
@@ -48,7 +48,7 @@
             <!-- 드롭다운 방식 영역 -->
             <select id="actionSelect" onchange="handleActionChange()" style="display:none;"></select>
             
-            <input id="customAction" placeholder="조치내역">
+            <input id="customAction" placeholder="조치내역" oninput="updateNoteByAction()">
         </div>
         <div class="form-group">
             <label>4. 금액/자재 (업체 인식 결과)</label>
@@ -103,6 +103,7 @@
             <div class="worker-btn" onclick="toggleW(this, '김형우')">김형우</div>
             <div class="worker-btn" onclick="toggleW(this, '손정훈')">손정훈</div>
             <div class="worker-btn" onclick="toggleW(this, '주지홍')">주지홍</div>
+            <div class="worker-btn" onclick="toggleW(this, '신종민')">신종민</div>
         </div>
     </div>
 
@@ -119,7 +120,7 @@
 <script>
 let currentBrand = "NORMAL";
 let selectedWorkers = [];
-let parsedHistory = ""; // GS25 파싱 작업 이력 저장용 변수
+let parsedHistory = "";
 
 const cvsPriceTable = {
     "GS":    { "내부배관 통수작업": 15, "외부배관 통수작업": 25, "내부배관 세척작업": 40, "외부배관 세척작업": 70 },
@@ -142,22 +143,18 @@ const bkPriceMap = {
 
 const brandHistoryDB = {
     "BURGERKING": {
-        actions: ["바닥배관 통수작업", "바닥배관 전체통수작업", "바닥배관 전기 고압세척작업"],
-        notes: "- 바닥배관 역류 확인 후 작업 완료\n- 작업 후 정상 배수 확인 후 퇴점하였습니다."
+        actions: ["바닥배관 통수작업", "바닥배관 전체통수작업", "바닥배관 전기 고압세척작업"]
     },
     "STARBUCKS": {
-        actions: ["백룸 제빙기 배수관 통수작업", "바 아이스빈 주름관 고정 및 통수작업", "싱크대 수전 교체작업 및 고압호스 연결작업", "천정 누수 점검 및 배관 보수작업"],
-        prices: ["통수공 2인 / 2인작업 협의완료\n내시경촬영 협의완료", "자재비 별도 / 인건비 협의", "빌지작성"],
-        notes: "- 제빙기 배수관 역류현상 확인 후 통수 완료\n- 작업 후 정상배수 확인 후 퇴점하였습니다."
+        actions: ["백룸 통수작업", "바 통수작업"],
+        prices: ["통수공 0.5인 내시경 촬영 협의완료", "설비공 0.5인", "통수공 2인 / 2인작업 협의완료\n내시경촬영 협의완료", "자재비 별도 / 인건비 협의"]
     },
     "GSSUPER": {
-        actions: [],
-        notes: "- 현장 점검 및 작업 완료 후 정상 배수 확인"
+        actions: []
     },
     "NORMAL": {
         actions: ["현장 점검 및 조치 완료", "파손 부속 교체작업"],
-        prices: ["인건비 및 자재비 협의", "빌지작성"],
-        notes: "- 작업 완료 후 정상 작동 확인"
+        prices: ["인건비 및 자재비 협의", "빌지작성"]
     }
 };
 
@@ -170,6 +167,15 @@ const brandConfigs = {
     STARBUCKS: { label: "스타벅스", color: "#007042", f1: "장소/경유", f4: "금액(청구인원)/투입자재" },
     NORMAL:    { label: "기타", color: "#95a5a6", f1: "점포명", f4: "금액/자재" }
 };
+
+function updateNoteByAction() {
+    const actVal = document.getElementById('customAction').value;
+    if (actVal.includes("통수") || actVal.includes("세척")) {
+        document.getElementById('customNote').value = "- 작업후 정상배수 확인 후 퇴점하였습니다";
+    } else {
+        document.getElementById('customNote').value = "- 작업후 정상작동 확인 후 퇴점하였습니다";
+    }
+}
 
 function initTime() {
     const now = new Date();
@@ -198,7 +204,6 @@ function analyzeData() {
     const inputRaw = document.getElementById('inputOrder').value;
     const input = inputRaw.toLowerCase();
     
-    // 브랜드 판별
     if (/(버거킹|burgerking|\bbk\b)/i.test(input)) {
         currentBrand = "BURGERKING";
     } else if (/(수퍼|슈퍼|더프레시)/i.test(input) && /(gs|지에스)/i.test(input)) {
@@ -215,7 +220,6 @@ function analyzeData() {
         currentBrand = "NORMAL";
     }
 
-    // GS25 브랜드일 경우, '6. 특이 사항' 영역에서 과거 작업 이력(날짜 포함) 자동 파싱
     parsedHistory = "";
     if (currentBrand === "GS") {
         const noteMatch = inputRaw.match(/6\.\s*특이\s*사항\s*:\s*([\s\S]*?)(?=ㅡㅡ|8\/|\n\n[0-9]\.|$)/i);
@@ -223,7 +227,7 @@ function analyzeData() {
             const noteContent = noteMatch[1];
             const historyLines = noteContent.split('\n')
                 .map(line => line.trim())
-                .filter(line => /\d{2}\.\d{2}\.\d{2}/.test(line)); // YY.MM.DD 형태 날짜가 포함된 행만 필터링
+                .filter(line => /\d{2}\.\d{2}\.\d{2}/.test(line));
             parsedHistory = historyLines.join('\n');
         }
     }
@@ -261,7 +265,6 @@ function analyzeData() {
 
         cvsArea.querySelectorAll('input[type="checkbox"]')[0].checked = true;
         updateCVSSelection();
-        document.getElementById('customNote').value = "- 작업 완료 후 정상 작동 확인";
 
     } else if (currentBrand === "GSSUPER") {
         cvsArea.style.display = "none";
@@ -276,8 +279,7 @@ function analyzeData() {
         gsSuperPriceSelect.selectedIndex = 0;
         gsSuperManager.value = "";
         updateGSSuperPrice();
-
-        document.getElementById('customNote').value = brandHistoryDB["GSSUPER"].notes;
+        updateNoteByAction();
 
     } else {
         cvsArea.style.display = "none";
@@ -322,7 +324,7 @@ function analyzeData() {
             updateS('priceSelect', data.prices, 'customPrice');
         }
 
-        document.getElementById('customNote').value = data.notes;
+        updateNoteByAction();
     }
 }
 
@@ -331,6 +333,7 @@ function handleActionChange() {
     if (currentBrand === "BURGERKING") {
         updateBKPrice();
     }
+    updateNoteByAction();
 }
 
 function handleBKPriceSelectChange() {
@@ -392,6 +395,7 @@ function updateCVSSelection() {
 
     if (selectedActions.length === 0) {
         document.getElementById('customPrice').value = "";
+        updateNoteByAction();
         return;
     }
 
@@ -400,6 +404,8 @@ function updateCVSSelection() {
     } else {
         document.getElementById('customPrice').value = `${totalPrice}\n경영주와 협의완료\n빌지작성`;
     }
+
+    updateNoteByAction();
 }
 
 function syncField(sid, iid) {
@@ -444,7 +450,6 @@ function generateReport() {
     const locM = input.match(/(?:점포명(?:,경유)?\s*:\s*)(.*)/);
     const symM = input.match(/(?:증상\s*:\s*)(.*)/);
     
-    // GS25일 경우 파싱된 과거 작업 이력을 사용
     const historyText = (currentBrand === "GS" && parsedHistory) ? parsedHistory : "";
 
     const res = `1. ${config.f1} : ${locM?locM[1].split('\n')[0].trim():'현장확인'}\n\n2. 접수내용 : ${symM?symM[1].split('\n')[0].trim():'내용확인'}\n\n3. 조치내용 : ${document.getElementById('customAction').value}\n\n4. ${config.f4} :\n${document.getElementById('customPrice').value}\n\n5. 작업시간 : ${timeStr}\n\n6. 특이사항 :\n${document.getElementById('customNote').value}\n\n7. 작업이력 :\n${historyText}\n\n8. 작업자 : ${selectedWorkers.join(' ')}`;
